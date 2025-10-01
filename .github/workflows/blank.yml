@@ -22,5 +22,5 @@ jobs:
       shell: pwsh
 
     - name: Create Pinggy Tunnel
-      run: ssh -p 443 -R0:127.0.0.1:3389 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${{ secrets.PINGGY_TOKEN }}@ap.free.pinggy.io
+      run: ssh -p 443 -R0:127.0.0.1:3389 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 "'${{ secrets.PINGGY_TOKEN }}@ap.free.pinggy.io'"
       shell: pwsh
