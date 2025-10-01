@@ -11,9 +11,11 @@ jobs:
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
-      shell: pwsh
+        $securePassword = ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force
+        New-LocalUser -Name "runneradmin" -Password $securePassword -NoPassword
+        Add-LocalGroupMember -Group "Remote Desktop Users" -Member "runneradmin"
+      shell: pwsh  # Use pwsh for better SecureString handling
 
     - name: Create Pinggy Tunnel
-      run: ssh -p 443 -R0:127.0.0.1:3389 -L4300:127.0.0.1:4300 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${{ secrets.PINGGY_TOKEN }}@ap.free.pinggy.io
-      shell: cmd  # SSH works best in cmd for Windows runners
+      run: ssh -p 443 -R0:127.0.0.1:3389 -L4300:127.0.0.1:4300 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io
+      shell: pwsh  # pwsh has OpenSSH; works reliably on Windows runners
