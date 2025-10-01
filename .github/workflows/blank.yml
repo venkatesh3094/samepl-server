@@ -6,10 +6,6 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-    - name: Download Bore
-      run: Invoke-WebRequest https://github.com/ekzhang/bore/releases/latest/download/bore-v0.5.1-x86_64-pc-windows-msvc.exe -OutFile bore.exe
-      shell: pwsh  # Ensures PowerShell for Invoke-WebRequest
-
     - name: Enable RDP
       run: |
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
@@ -18,6 +14,6 @@ jobs:
         Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
       shell: pwsh
 
-    - name: Create Tunnel
-      run: .\bore.exe local 3389 --to bore.pub
-      shell: pwsh
+    - name: Create Pinggy Tunnel
+      run: ssh -p 443 -R0:127.0.0.1:3389 -L4300:127.0.0.1:4300 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 ${{ secrets.PINGGY_TOKEN }}@ap.free.pinggy.io
+      shell: cmd  # SSH works best in cmd for Windows runners
