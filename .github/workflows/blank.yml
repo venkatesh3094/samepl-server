@@ -1,10 +1,10 @@
-name: Ubuntu Tailscale RDP/SSH
+name: Ubuntu Tailscale SSH
 
 on:
   workflow_dispatch:
 
 jobs:
-  secure-ubuntu:
+  ubuntu-ssh:
     runs-on: ubuntu-latest
     timeout-minutes: 3600
 
@@ -12,27 +12,27 @@ jobs:
       - name: Update & Install Dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y curl ufw xrdp
+          sudo apt-get install -y curl ufw openssh-server
 
-      - name: Configure xRDP (for GUI)
+      - name: Configure SSH
         run: |
-          sudo systemctl enable xrdp
-          sudo systemctl start xrdp
+          # Ensure SSH server is enabled and running
+          sudo systemctl enable ssh
+          sudo systemctl start ssh
 
-      - name: Open Firewall for RDP
-        run: |
-          sudo ufw allow 3389/tcp
+          # Open SSH port in firewall
+          sudo ufw allow 22/tcp
           sudo ufw --force enable
 
-      - name: Create User with Secure Password
+      - name: Create SSH User with Secure Password
         run: |
           # Generate random password
           PASSWORD=$(openssl rand -base64 16)
-          sudo useradd -m -s /bin/bash rdpuser
-          echo "rdpuser:$PASSWORD" | sudo chpasswd
-          sudo usermod -aG sudo,adm rdpuser
+          sudo useradd -m -s /bin/bash sshuser
+          echo "sshuser:$PASSWORD" | sudo chpasswd
+          sudo usermod -aG sudo,adm sshuser
           
-          echo "RDP_CREDS=User: rdpuser | Password: $PASSWORD" >> $GITHUB_ENV
+          echo "SSH_CREDS=User: sshuser | Password: $PASSWORD" >> $GITHUB_ENV
 
       - name: Install Tailscale
         run: |
@@ -41,6 +41,7 @@ jobs:
       - name: Connect Tailscale
         run: |
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-runner-$GITHUB_RUN_ID
+          
           # Wait until Tailscale assigns an IP
           for i in {1..10}; do
             TS_IP=$(tailscale ip -4)
@@ -49,27 +50,29 @@ jobs:
             fi
             sleep 5
           done
+          
           if [ -z "$TS_IP" ]; then
             echo "Tailscale IP not assigned"
             exit 1
           fi
           echo "TAILSCALE_IP=$TS_IP" >> $GITHUB_ENV
 
-      - name: Verify Connectivity
+      - name: Verify SSH Connectivity
         run: |
           echo "Tailscale IP: $TAILSCALE_IP"
-          nc -zv $TAILSCALE_IP 3389 || (echo "RDP port not reachable" && exit 1)
-          echo "RDP/SSH port reachable!"
+          nc -zv $TAILSCALE_IP 22 || (echo "SSH port not reachable" && exit 1)
+          echo "SSH port reachable!"
 
       - name: Maintain Connection
         run: |
-          echo "=== ACCESS INFO ==="
+          echo "=== SSH ACCESS INFO ==="
           echo "Address: $TAILSCALE_IP"
-          echo "Username: rdpuser"
-          echo "Password: $RDP_CREDS"
-          echo "=================="
-          # Keep the job alive indefinitely
+          echo "Username: sshuser"
+          echo "Password: $SSH_CREDS"
+          echo "======================="
+          
+          # Keep the workflow alive
           while true; do
-            echo "[$(date)] Connection active..."
+            echo "[$(date)] SSH over Tailscale active..."
             sleep 300
           done
